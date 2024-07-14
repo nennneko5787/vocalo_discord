@@ -1,0 +1,4 @@
+discord.py[voice]
+python-dotenv
+flask
+yt-dlp
