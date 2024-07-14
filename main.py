@@ -8,6 +8,8 @@ from datetime import datetime
 import discord
 from discord.app_commands import CommandTree
 from discord.ext import tasks
+from yt_dlp import YoutubeDL
+
 
 from keep_alive import keep_alive
 
@@ -55,22 +57,22 @@ async def loadVideos():
 
 
 def getcolor(title: str, description: str) -> discord.Colour:
-    text = f"{title}\t{description}"
-    if "初音" in text or "Hatsune" in text or "Hatune" in text:
+    text = f"{title}\t{description}".lower()
+    if "初音" in text or "hatsune" in text or "hatune" in text:
         return discord.Colour.from_str("#c3e5e7")
-    elif "鏡音" in text or "Kagamine" in text:
+    elif "鏡音" in text or "kagamine" in text:
         return discord.Colour.from_str("#fcf5a7")
-    elif "巡音" in text or "Megurine" in text:
+    elif "巡音" in text or "megurine" in text:
         return discord.Colour.from_str("#ebd3cf")
-    elif "KAITO" in text:
+    elif "kaito" in text:
         return discord.Colour.from_str("#413a87")
-    elif "MEIKO" in text:
+    elif "meiko" in text:
         return discord.Colour.from_str("#cb213c")
-    elif "IA" in text:
+    elif "ia" in text:
         return discord.Colour.from_str("#c0c0c0")
-    elif "GUMI" in text:
+    elif "gumi" in text:
         return discord.Colour.from_str("#32cd32")
-    elif "可不" in text or "Kafu" in text:
+    elif "可不" in text or "kafu" in text:
         return discord.Colour.from_str("#d8bfd8")
     else:
         return None
@@ -84,7 +86,11 @@ async def playSongs():
         channel: discord.VoiceChannel = client.get_channel(1261937281548161094)
         await channel.connect()
     video = await queue.get()
-    url = video.get("url")
+    ydl = YoutubeDL()
+    dic = await asyncio.to_thread(
+        lambda: ydl.extract_info(video.get("webpage_url", ""), download=False)
+    )
+    url = dic.get("url")
     FFMPEG_OPTIONS = {
         "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
         "options": "-vn",
