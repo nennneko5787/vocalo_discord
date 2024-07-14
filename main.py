@@ -29,6 +29,7 @@ async def on_ready():
     print("ran `await loadVideos()`")
     await tree.sync()
     print("ran `await tree.sync()`")
+    presence.start()
     print("play")
     guild: discord.Guild = client.get_guild(1124309483703763025)
     voice_client: discord.VoiceClient = guild.voice_client
@@ -39,7 +40,7 @@ async def on_ready():
 
 @tasks.loop(seconds=20)
 async def presence():
-    await client.change_presence(status=statusMessage)
+    await client.change_presence(activity=discord.Game(statusMessage))
 
 
 videos = []
