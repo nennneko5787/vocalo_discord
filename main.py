@@ -7,6 +7,7 @@ from datetime import datetime
 import signal
 import sys
 from concurrent.futures import ProcessPoolExecutor
+from functools import partial  # Import functools.partial
 
 import discord
 from discord.app_commands import CommandTree
@@ -14,18 +15,15 @@ from discord.ext import tasks
 from yt_dlp import YoutubeDL
 import aiofiles
 
-
 from keep_alive import keep_alive
 
 if os.path.isfile(".env"):
     from dotenv import load_dotenv
-
     load_dotenv()
 
 client: discord.Client = discord.Client(intents=discord.Intents.all())
 tree: CommandTree = CommandTree(client)
 executor: ProcessPoolExecutor = ProcessPoolExecutor(max_workers=3)
-
 
 async def handler(signum, frame):
     """
@@ -37,7 +35,6 @@ async def handler(signum, frame):
     print("see you")
     sys.exit(0)
 
-
 signal.signal(
     signal.SIGTERM,
     lambda signum, frame: asyncio.create_task(handler(signum, frame)),
@@ -46,7 +43,6 @@ signal.signal(
     signal.SIGINT,
     lambda signum, frame: asyncio.create_task(handler(signum, frame)),
 )
-
 
 @client.event
 async def on_ready():
@@ -64,18 +60,14 @@ async def on_ready():
         await voice_client.disconnect(force=True)
     await play()
 
-
 videos = []
 queue: asyncio.Queue = asyncio.Queue()
-
 
 async def loadVideos():
     global videos
     async with aiofiles.open("songs.txt", "r") as f:
         data = await f.read()
         videos = json.loads(data)
-    return
-
 
 def getcolor(title: str, description: str) -> discord.Colour:
     text = f"{title}\t{description}".lower()
@@ -98,14 +90,11 @@ def getcolor(title: str, description: str) -> discord.Colour:
     else:
         return None
 
-
 playing = False
-
 
 def after_playback():
     global playing
     playing = False
-
 
 async def playSongs():
     try:
@@ -139,8 +128,10 @@ async def playSongs():
             if not dic:
                 dic = await loop.run_in_executor(
                     executor,
-                    lambda: ydl.extract_info(
-                        video.get("webpage_url", ""), download=False
+                    partial(
+                        ydl.extract_info,
+                        video.get("webpage_url", ""),
+                        download=False
                     ),
                 )
             url = dic.get("url")
@@ -153,7 +144,8 @@ async def playSongs():
             )
             await loop.run_in_executor(
                 executor,
-                lambda: voice_client.play(
+                partial(
+                    voice_client.play,
                     source,
                     after=lambda e: after_playback(),
                 ),
@@ -195,15 +187,16 @@ async def playSongs():
             video = await queue.get()
             dic = await loop.run_in_executor(
                 executor,
-                lambda: ydl.extract_info(
-                    video.get("webpage_url", ""), download=False
+                partial(
+                    ydl.extract_info,
+                    video.get("webpage_url", ""),
+                    download=False
                 ),
             )
             while playing:
                 await asyncio.sleep(2)
     except Exception as e:
         print(e)
-
 
 @tree.command(name="play", description="再生が効かなくなってしまったとき用")
 async def playCommand(interaction: discord.Interaction):
@@ -212,7 +205,6 @@ async def playCommand(interaction: discord.Interaction):
     if voice_client:
         await voice_client.disconnect(force=True)
     await play()
-
 
 async def play():
     global videos
@@ -237,7 +229,6 @@ async def play():
                 }
             )
         await playSongs()
-
 
 keep_alive()
 
