@@ -205,6 +205,7 @@ async def playSongs():
 
 @tree.command(name="play", description="再生が効かなくなってしまったとき用")
 async def playCommand(interaction: discord.Interaction):
+    await interaction.response.send_message("ok", ephemeral=True)
     voice_client: discord.VoiceClient = interaction.guild.voice_client
     if voice_client:
         await voice_client.disconnect(force=True)
