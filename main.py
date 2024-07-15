@@ -6,6 +6,7 @@ import random
 from datetime import datetime
 import signal
 import sys
+from concurrent.futures import ProcessPoolExecutor
 
 import discord
 from discord.app_commands import CommandTree
@@ -23,6 +24,7 @@ if os.path.isfile(".env"):
 
 client: discord.Client = discord.Client(intents=discord.Intents.all())
 tree: CommandTree = CommandTree(client)
+executor: ProcessPoolExecutor = ProcessPoolExecutor(max_workers=3)
 
 
 async def handler(signum, frame):
@@ -123,6 +125,7 @@ async def playSongs():
             ],
         }
         ydl = YoutubeDL(ydl_opts)
+        loop = asyncio.get_event_loop()
         while True:
             if not voice_client:
                 channel: discord.VoiceChannel = client.get_channel(
@@ -132,10 +135,11 @@ async def playSongs():
             if not video:
                 video = await queue.get()
             if not dic:
-                dic = await asyncio.to_thread(
+                dic = await loop.run_in_executor(
+                    executor,
                     lambda: ydl.extract_info(
                         video.get("webpage_url", ""), download=False
-                    )
+                    ),
                 )
             url = dic.get("url")
             FFMPEG_OPTIONS = {
@@ -145,10 +149,12 @@ async def playSongs():
             source = await discord.FFmpegOpusAudio.from_probe(
                 url, **FFMPEG_OPTIONS
             )
-            await asyncio.to_thread(
-                voice_client.play,
-                source,
-                after=lambda e: after_playback(),
+            await loop.run_in_executor(
+                executor,
+                lambda: voice_client.play(
+                    source,
+                    after=lambda e: after_playback(),
+                ),
             )
             playing = True
 
@@ -185,10 +191,11 @@ async def playSongs():
                     )
 
             video = await queue.get()
-            dic = await asyncio.to_thread(
+            dic = await loop.run_in_executor(
+                executor,
                 lambda: ydl.extract_info(
                     video.get("webpage_url", ""), download=False
-                )
+                ),
             )
             while playing:
                 await asyncio.sleep(2)
