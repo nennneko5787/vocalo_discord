@@ -28,10 +28,12 @@ executor: ProcessPoolExecutor = ProcessPoolExecutor(max_workers=3)
 
 
 async def handler(signum, frame):
+    """
     guild: discord.Guild = client.get_guild(1124309483703763025)
     voice_client: discord.VoiceClient = guild.voice_client
     if voice_client:
         await voice_client.disconnect(force=True)
+    """
     print("see you")
     sys.exit(0)
 
