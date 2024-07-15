@@ -6,12 +6,11 @@ import random
 from datetime import datetime
 import signal
 import sys
-from concurrent.futures import ProcessPoolExecutor
-from functools import partial  # Import functools.partial
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 
 import discord
 from discord.app_commands import CommandTree
-from discord.ext import tasks
 from yt_dlp import YoutubeDL
 import aiofiles
 
@@ -19,30 +18,28 @@ from keep_alive import keep_alive
 
 if os.path.isfile(".env"):
     from dotenv import load_dotenv
+
     load_dotenv()
 
 client: discord.Client = discord.Client(intents=discord.Intents.all())
 tree: CommandTree = CommandTree(client)
-executor: ProcessPoolExecutor = ProcessPoolExecutor(max_workers=3)
+executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=3)
 
-async def handler(signum, frame):
-    """
-    guild: discord.Guild = client.get_guild(1124309483703763025)
-    voice_client: discord.VoiceClient = guild.voice_client
-    if voice_client:
-        await voice_client.disconnect(force=True)
-    """
+
+def handler(signum, frame):
     print("see you")
     sys.exit(0)
 
+
 signal.signal(
     signal.SIGTERM,
-    lambda signum, frame: asyncio.create_task(handler(signum, frame)),
+    handler,
 )
 signal.signal(
     signal.SIGINT,
-    lambda signum, frame: asyncio.create_task(handler(signum, frame)),
+    handler,
 )
+
 
 @client.event
 async def on_ready():
@@ -53,6 +50,7 @@ async def on_ready():
     await tree.sync()
     print("ran `await tree.sync()`")
     """
+    # asyncio.sleep(120)
     print("play")
     guild: discord.Guild = client.get_guild(1124309483703763025)
     voice_client: discord.VoiceClient = guild.voice_client
@@ -60,14 +58,17 @@ async def on_ready():
         await voice_client.disconnect(force=True)
     await play()
 
+
 videos = []
 queue: asyncio.Queue = asyncio.Queue()
+
 
 async def loadVideos():
     global videos
     async with aiofiles.open("songs.txt", "r") as f:
         data = await f.read()
         videos = json.loads(data)
+
 
 def getcolor(title: str, description: str) -> discord.Colour:
     text = f"{title}\t{description}".lower()
@@ -90,113 +91,102 @@ def getcolor(title: str, description: str) -> discord.Colour:
     else:
         return None
 
+
 playing = False
+
 
 def after_playback():
     global playing
     playing = False
 
-async def playSongs():
-    try:
-        global queue
-        global playing
-        guild: discord.Guild = client.get_guild(1124309483703763025)
-        voice_client: discord.VoiceProtocol = guild.voice_client
-        video = None
-        dic = None
-        ydl_opts = {
+
+def extract_info(video_url):
+    ydl = YoutubeDL(
+        {
             "outtmpl": "%(id)s",
             "format": "ogg/bestaudio/best",
             "noplaylist": True,
             "postprocessors": [
-                {
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "ogg",
-                }
+                {"key": "FFmpegExtractAudio", "preferredcodec": "ogg"}
             ],
         }
-        ydl = YoutubeDL(ydl_opts)
-        loop = asyncio.get_event_loop()
-        while True:
-            if not voice_client:
-                channel: discord.VoiceChannel = client.get_channel(
-                    1261937281548161094
-                )
-                await channel.connect()
-            if not video:
-                video = await queue.get()
-            if not dic:
-                dic = await loop.run_in_executor(
-                    executor,
-                    partial(
-                        ydl.extract_info,
-                        video.get("webpage_url", ""),
-                        download=False
-                    ),
-                )
-            url = dic.get("url")
-            FFMPEG_OPTIONS = {
-                "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-                "options": "-vn",
-            }
-            source = await discord.FFmpegOpusAudio.from_probe(
-                url, **FFMPEG_OPTIONS
-            )
-            await loop.run_in_executor(
-                executor,
-                partial(
-                    voice_client.play,
-                    source,
-                    after=lambda e: after_playback(),
-                ),
-            )
-            playing = True
+    )
+    return ydl.extract_info(video_url, download=False)
 
-            title = dic.get("title")
-            await client.change_presence(activity=discord.Game(title))
-            webpage_url = dic.get("webpage_url")
-            thumbnail = dic.get("thumbnail")
-            description = dic.get("description")
-            embed = (
-                discord.Embed(
-                    title=title,
-                    url=webpage_url,
-                    timestamp=datetime.now(),
-                    color=getcolor(title, description),
-                )
-                .set_author(name="再生中")
-                .set_image(url=thumbnail)
+
+async def playSongs():
+    global queue
+    global playing
+    guild: discord.Guild = client.get_guild(1124309483703763025)
+    voice_client: discord.VoiceProtocol = guild.voice_client
+    video = None
+    dic = None
+    loop = asyncio.get_event_loop()
+    while True:
+        if not voice_client:
+            channel: discord.VoiceChannel = client.get_channel(
+                1261937281548161094
             )
-            await client.get_channel(1261937281548161094).send(embed=embed)
-
-            if queue.qsize() <= 0:
-                videoList = copy.deepcopy(videos)
-                random.shuffle(videoList)
-                for video in videoList:
-                    await queue.put(
-                        {
-                            "webpage_url": video.get("webpage_url"),
-                            "url": video.get("url"),
-                            "title": video.get("title"),
-                            "id": video.get("id"),
-                            "thumbnail": video.get("thumbnail"),
-                            "description": video.get("description"),
-                        }
-                    )
-
+            await channel.connect()
+        if not video:
             video = await queue.get()
+        if not dic:
             dic = await loop.run_in_executor(
-                executor,
-                partial(
-                    ydl.extract_info,
-                    video.get("webpage_url", ""),
-                    download=False
-                ),
+                executor, partial(extract_info, video.get("webpage_url", ""))
             )
-            while playing:
-                await asyncio.sleep(2)
-    except Exception as e:
-        print(e)
+        url = dic.get("url")
+        FFMPEG_OPTIONS = {
+            "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+            "options": "-vn",
+        }
+        source = await discord.FFmpegOpusAudio.from_probe(
+            url, **FFMPEG_OPTIONS
+        )
+        voice_client.play(
+            source,
+            after=lambda e: after_playback(),
+        )
+        playing = True
+
+        title = dic.get("title")
+        await client.change_presence(activity=discord.Game(title))
+        webpage_url = dic.get("webpage_url")
+        thumbnail = dic.get("thumbnail")
+        description = dic.get("description")
+        embed = (
+            discord.Embed(
+                title=title,
+                url=webpage_url,
+                timestamp=datetime.now(),
+                color=getcolor(title, description),
+            )
+            .set_author(name="再生中")
+            .set_image(url=thumbnail)
+        )
+        await client.get_channel(1261937281548161094).send(embed=embed)
+
+        if queue.qsize() <= 0:
+            videoList = copy.deepcopy(videos)
+            random.shuffle(videoList)
+            for video in videoList:
+                await queue.put(
+                    {
+                        "webpage_url": video.get("webpage_url"),
+                        "url": video.get("url"),
+                        "title": video.get("title"),
+                        "id": video.get("id"),
+                        "thumbnail": video.get("thumbnail"),
+                        "description": video.get("description"),
+                    }
+                )
+
+        video = await queue.get()
+        dic = await loop.run_in_executor(
+            executor, partial(extract_info, video.get("webpage_url", ""))
+        )
+        while playing:
+            await asyncio.sleep(2)
+
 
 @tree.command(name="play", description="再生が効かなくなってしまったとき用")
 async def playCommand(interaction: discord.Interaction):
@@ -205,6 +195,7 @@ async def playCommand(interaction: discord.Interaction):
     if voice_client:
         await voice_client.disconnect(force=True)
     await play()
+
 
 async def play():
     global videos
@@ -229,6 +220,7 @@ async def play():
                 }
             )
         await playSongs()
+
 
 keep_alive()
 
