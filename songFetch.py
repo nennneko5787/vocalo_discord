@@ -1,6 +1,12 @@
+import os
 import json
 
 from yt_dlp import YoutubeDL
+
+if os.path.isfile(".env"):
+    from dotenv import load_dotenv
+
+    load_dotenv()
 
 
 def main():
@@ -10,6 +16,7 @@ def main():
         "format": "bestaudio/best",
         "noplaylist": False,
         "default_search": "ytsearch",
+        "cookies": "./www.youtube.com_cookies.txt",
     }
     with YoutubeDL(ydl_opts) as ydl:
         playList = ydl.extract_info(

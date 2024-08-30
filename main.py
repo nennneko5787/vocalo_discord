@@ -86,7 +86,7 @@ def getcolor(title: str, description: str) -> discord.Colour:
         return discord.Colour.from_str("#c0c0c0")
     elif "gumi" in text:
         return discord.Colour.from_str("#32cd32")
-    elif "可不" in text or "kafu" in text:
+    elif "可不" in text or "kafu" in text or "kahu" in text:
         return discord.Colour.from_str("#d8bfd8")
     else:
         return None
@@ -106,9 +106,7 @@ def extract_info(video_url):
             "outtmpl": "%(id)s",
             "format": "ogg/bestaudio/best",
             "noplaylist": True,
-            "postprocessors": [
-                {"key": "FFmpegExtractAudio", "preferredcodec": "ogg"}
-            ],
+            "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "ogg"}],
         }
     )
     return ydl.extract_info(video_url, download=False)
@@ -124,9 +122,7 @@ async def playSongs():
     loop = asyncio.get_event_loop()
     while True:
         if not voice_client:
-            channel: discord.VoiceChannel = client.get_channel(
-                1261937281548161094
-            )
+            channel: discord.VoiceChannel = client.get_channel(1261937281548161094)
             await channel.connect()
         if not video:
             video = await queue.get()
@@ -139,9 +135,7 @@ async def playSongs():
             "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
             "options": "-vn",
         }
-        source = await discord.FFmpegOpusAudio.from_probe(
-            url, **FFMPEG_OPTIONS
-        )
+        source = await discord.FFmpegOpusAudio.from_probe(url, **FFMPEG_OPTIONS)
         voice_client.play(
             source,
             after=lambda e: after_playback(),
