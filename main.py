@@ -216,7 +216,7 @@ async def play():
         await playSongs()
 
 
-keep_alive()
+# keep_alive()
 
 TOKEN = os.getenv("discord")
 client.run(TOKEN)
