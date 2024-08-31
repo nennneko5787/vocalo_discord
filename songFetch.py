@@ -1,24 +1,15 @@
-import os
 import json
 
-from yt_dlp import YoutubeDL
-
-if os.path.isfile(".env"):
-    from dotenv import load_dotenv
-
-    load_dotenv()
+from yt_dlp import YoutubeDL, cookies
 
 
 def main():
     global videos
     ydl_opts = {
-        "outtmpl": "%(id)s",
-        "format": "bestaudio/best",
         "noplaylist": False,
-        "default_search": "ytsearch",
-        "cookies": "./www.youtube.com_cookies.txt",
     }
     with YoutubeDL(ydl_opts) as ydl:
+        ydl.cookiejar = cookies.extract_cookies_from_browser("firefox")
         playList = ydl.extract_info(
             "https://www.youtube.com/playlist?list=PLD4GDVLEEp6wi73_170Dmv_QC_KyOc7Yp",
             download=False,
