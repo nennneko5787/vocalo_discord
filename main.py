@@ -105,6 +105,8 @@ def extract_info(video_url):
             "format": "ogg/bestaudio/best",
             "noplaylist": True,
             "postprocessors": [{"key": "FFmpegExtractAudio", "preferredcodec": "ogg"}],
+            "username": "oauth2",
+            "password": ""
         }
     )
     return ydl.extract_info(video_url, download=False)
