@@ -14,8 +14,6 @@ from discord.app_commands import CommandTree
 from yt_dlp import YoutubeDL
 import aiofiles
 
-from keep_alive import keep_alive
-
 if os.path.isfile(".env"):
     from dotenv import load_dotenv
 
