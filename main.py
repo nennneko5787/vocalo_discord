@@ -115,14 +115,14 @@ def extract_info(video_url):
 async def playSongs():
     global queue
     global playing
-    guild: discord.Guild = client.get_guild(1124309483703763025)
+    guild: discord.Guild = client.get_guild(1282708798791745626)
     voice_client: discord.VoiceProtocol = guild.voice_client
     video = None
     dic = None
     loop = asyncio.get_event_loop()
     while True:
         if not voice_client:
-            channel: discord.VoiceChannel = client.get_channel(1261937281548161094)
+            channel: discord.VoiceChannel = client.get_channel(1283057648790409277)
             await channel.connect()
         if not video:
             video = await queue.get()
@@ -157,7 +157,7 @@ async def playSongs():
             .set_author(name="再生中")
             .set_image(url=thumbnail)
         )
-        await client.get_channel(1261937281548161094).send(embed=embed)
+        await client.get_channel(1283057648790409277).send(embed=embed)
 
         if queue.qsize() <= 0:
             videoList = copy.deepcopy(videos)
