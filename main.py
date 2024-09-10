@@ -50,7 +50,7 @@ async def on_ready():
     """
     # asyncio.sleep(120)
     print("play")
-    guild: discord.Guild = client.get_guild(1124309483703763025)
+    guild: discord.Guild = client.get_guild(1282708798791745626)
     voice_client: discord.VoiceClient = guild.voice_client
     if voice_client:
         await voice_client.disconnect(force=True)
