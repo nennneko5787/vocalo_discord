@@ -6,6 +6,7 @@ import random
 from datetime import datetime
 import signal
 import sys
+import resource
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
@@ -13,6 +14,8 @@ import discord
 from discord.app_commands import CommandTree
 from yt_dlp import YoutubeDL
 import aiofiles
+
+resource.setrlimit(resource.RLIMIT_NOFILE, (8192, 9223372036854775807))
 
 if os.path.isfile(".env"):
     from dotenv import load_dotenv
