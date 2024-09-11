@@ -15,7 +15,8 @@ from discord.app_commands import CommandTree
 from yt_dlp import YoutubeDL
 import aiofiles
 
-resource.setrlimit(resource.RLIMIT_NOFILE, (8192, 9223372036854775807))
+soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+resource.setrlimit(resource.RLIMIT_NOFILE, (min(8192, soft), hard))
 
 if os.path.isfile(".env"):
     from dotenv import load_dotenv
